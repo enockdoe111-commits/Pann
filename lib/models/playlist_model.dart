@@ -18,12 +18,16 @@ class PlaylistModel {
       };
 
   factory PlaylistModel.fromMap(Map<String, dynamic> map) {
-    final songsData = (map['songs'] as List? ?? []).cast<Map<String, dynamic>>();
-    final songs = songsData.map(SongModel.fromMap).toList();
+    final rawSongs = map['songs'];
+    final songsList = rawSongs is List ? rawSongs : const <dynamic>[];
+    final songs = songsList
+        .whereType<Map>()
+        .map((entry) => SongModel.fromMap(Map<String, dynamic>.from(entry)))
+        .toList();
 
     return PlaylistModel(
-      id: map['id'] ?? '',
-      name: map['name'] ?? 'Playlist',
+      id: (map['id'] ?? '').toString(),
+      name: (map['name'] ?? 'Playlist').toString(),
       songs: songs,
     );
   }

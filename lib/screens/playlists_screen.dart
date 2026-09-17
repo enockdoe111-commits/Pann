@@ -10,9 +10,7 @@ class PlaylistsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Playlists'),
-      ),
+      appBar: AppBar(title: const Text('Playlists')),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           final controller = TextEditingController();
@@ -23,6 +21,7 @@ class PlaylistsScreen extends StatelessWidget {
                 title: const Text('Create Playlist'),
                 content: TextField(
                   controller: controller,
+                  autofocus: true,
                   decoration: const InputDecoration(hintText: 'Playlist name'),
                 ),
                 actions: [
@@ -33,7 +32,9 @@ class PlaylistsScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () async {
                       await appState.createPlaylist(controller.text);
-                      Navigator.pop(context);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
                     },
                     child: const Text('Create'),
                   ),
@@ -44,13 +45,15 @@ class PlaylistsScreen extends StatelessWidget {
         },
         child: const Icon(Icons.add),
       ),
-      body: ListView.builder(
-        itemCount: appState.playlists.length,
-        itemBuilder: (_, index) {
-          final playlist = appState.playlists[index];
-          return _playlistTile(context, playlist, appState);
-        },
-      ),
+      body: appState.playlists.isEmpty
+          ? const Center(child: Text('No playlists yet. Create one to start organizing your music.'))
+          : ListView.builder(
+              itemCount: appState.playlists.length,
+              itemBuilder: (_, index) {
+                final playlist = appState.playlists[index];
+                return _playlistTile(context, playlist, appState);
+              },
+            ),
     );
   }
 
@@ -69,8 +72,64 @@ class PlaylistsScreen extends StatelessWidget {
             await appState.deletePlaylist(playlist);
           },
         ),
-        onTap: () async {
-          await appState.playPlaylist(playlist);
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) {
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            playlist.name,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (playlist.songs.isEmpty)
+                        const Text('This playlist is empty.')
+                      else
+                        ...playlist.songs.map((song) => ListTile(
+                              title: Text(song.title),
+                              subtitle: Text(song.artist),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.remove_circle_outline),
+                                onPressed: () {
+                                  appState.removeSongFromPlaylist(playlist.id, song.id);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              onTap: () => appState.playSong(song),
+                            )),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await appState.playPlaylist(playlist);
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                          child: const Text('Play playlist'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
     );

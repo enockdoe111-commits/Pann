@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:modern_music_player/main.dart';
+import 'package:modern_music_player/models/playlist_model.dart';
 
 class PlayerScreen extends StatelessWidget {
   final AppState appState;
@@ -17,9 +18,7 @@ class PlayerScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Now Playing'),
-      ),
+      appBar: AppBar(title: const Text('Now Playing')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -32,7 +31,7 @@ class PlayerScreen extends StatelessWidget {
                     height: 280,
                     width: 280,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(26),
                       gradient: const LinearGradient(
                         colors: [Color(0xFF7C4DFF), Color(0xFF00C2A8)],
                       ),
@@ -47,11 +46,11 @@ class PlayerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    song.artist,
-                    style: TextStyle(fontSize: 18, color: Colors.grey.shade400),
+                    '${song.artist} • ${song.album}',
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   AnimatedBuilder(
                     animation: appState,
                     builder: (context, _) {
@@ -59,13 +58,13 @@ class PlayerScreen extends StatelessWidget {
                       final total = appState.duration;
                       return Column(
                         children: [
-                          Slider(
+                          Slider.adaptive(
                             value: total.inMilliseconds > 0
                                 ? current.inMilliseconds.clamp(0, total.inMilliseconds).toDouble()
                                 : 0,
                             max: total.inMilliseconds > 0 ? total.inMilliseconds.toDouble() : 1,
-                            onChanged: (value) async {
-                              await appState.seekTo(Duration(milliseconds: value.toInt()));
+                            onChanged: (value) {
+                              appState.seekTo(Duration(milliseconds: value.toInt()));
                             },
                           ),
                           Padding(
@@ -92,7 +91,7 @@ class PlayerScreen extends StatelessWidget {
                           Icons.shuffle,
                           color: appState.shuffleEnabled ? Colors.greenAccent : Colors.white,
                         ),
-                        iconSize: 28,
+                        iconSize: 30,
                       ),
                       IconButton(
                         onPressed: () => appState.playPrevious(),
@@ -114,24 +113,19 @@ class PlayerScreen extends StatelessWidget {
                           Icons.repeat,
                           color: appState.repeatEnabled ? Colors.greenAccent : Colors.white,
                         ),
-                        iconSize: 28,
+                        iconSize: 30,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: () => appState.toggleFavorite(song),
-                        icon: Icon(
-                          appState.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
-                          color: appState.isFavorite(song.id) ? Colors.pink : Colors.white,
-                        ),
-                        iconSize: 32,
-                      )
-                    ],
-                  )
+                  const SizedBox(height: 22),
+                  IconButton(
+                    onPressed: () => appState.toggleFavorite(song),
+                    icon: Icon(
+                      appState.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
+                      color: appState.isFavorite(song.id) ? Colors.pink : Colors.white,
+                    ),
+                    iconSize: 32,
+                  ),
                 ],
               ),
             ),

@@ -36,13 +36,13 @@ class SongModel {
 
   factory SongModel.fromMap(Map<String, dynamic> map) {
     return SongModel(
-      id: map['id']?.toString() ?? 'unknown',
-      title: map['title'] ?? 'Unknown Title',
-      artist: map['artist'] ?? 'Unknown Artist',
-      album: map['album'] ?? 'Unknown Album',
-      durationMs: map['durationMs'] ?? 0,
-      uri: map['uri'] ?? '',
-      albumArtPath: map['albumArtPath'],
+      id: (map['id'] ?? '').toString(),
+      title: (map['title'] ?? 'Unknown Title').toString(),
+      artist: (map['artist'] ?? 'Unknown Artist').toString(),
+      album: (map['album'] ?? 'Unknown Album').toString(),
+      durationMs: int.tryParse(map['durationMs']?.toString() ?? '') ?? 0,
+      uri: (map['uri'] ?? '').toString(),
+      albumArtPath: map['albumArtPath']?.toString(),
     );
   }
 }

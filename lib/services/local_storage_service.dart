@@ -15,26 +15,33 @@ class LocalStorageService {
     _settingsBox = await Hive.openBox('settings');
   }
 
-  static List<SongModel> get favoriteSongs {
-    final items = (_favoritesBox.get('songs', defaultValue: []) as List).cast<Map>();
-    return items.map((map) => SongModel.fromMap(Map<String, dynamic>.from(map))).toList();
-  }
+  static List<SongModel> _readSongs(Box box) {
+    final raw = box.get('songs', defaultValue: const <Map<String, dynamic>>[]);
+    if (raw is! List) {
+      return const [];
+    }
 
-  static List<SongModel> get recentSongs {
-    final items = (_recentBox.get('songs', defaultValue: []) as List).cast<Map>();
-    return items.map((map) => SongModel.fromMap(Map<String, dynamic>.from(map))).toList();
+    return raw
+        .whereType<Map>()
+        .map((entry) => SongModel.fromMap(Map<String, dynamic>.from(entry)))
+        .toList();
   }
 
   static List<PlaylistModel> get playlists {
-    final items = (_playlistsBox.get('playlists', defaultValue: []) as List).cast<Map>();
-    return items.map((map) => PlaylistModel.fromMap(Map<String, dynamic>.from(map))).toList();
+    final raw = _playlistsBox.get('playlists', defaultValue: const <Map<String, dynamic>>[]);
+    if (raw is! List) {
+      return const [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map((entry) => PlaylistModel.fromMap(Map<String, dynamic>.from(entry)))
+        .toList();
   }
 
+  static List<SongModel> get favoriteSongs => _readSongs(_favoritesBox);
+  static List<SongModel> get recentSongs => _readSongs(_recentBox);
   static bool get isDarkMode => _settingsBox.get('darkMode', defaultValue: true) as bool;
-
-  static Future<void> loadSettings() async {
-    _settingsBox.get('darkMode', defaultValue: true);
-  }
 
   static Future<void> setDarkMode(bool value) async {
     await _settingsBox.put('darkMode', value);
@@ -42,53 +49,69 @@ class LocalStorageService {
 
   static Future<void> toggleFavorite(SongModel song) async {
     final current = favoriteSongs;
-    final ids = current.map((item) => item.id).toList();
-    if (ids.contains(song.id)) {
-      final filtered = current.where((item) => item.id != song.id).toList();
-      await _favoritesBox.put('songs', filtered.map((item) => item.toMap()).toList());
-    } else {
-      final updated = [...current, song];
-      await _favoritesBox.put('songs', updated.map((item) => item.toMap()).toList());
-    }
+    final contains = current.any((item) => item.id == song.id);
+    final updated = contains
+        ? current.where((item) => item.id != song.id).toList()
+        : [...current, song];
+
+    await _favoritesBox.put('songs', updated.map((song) => song.toMap()).toList());
   }
 
   static Future<void> saveRecentSong(SongModel song) async {
     final current = recentSongs;
-    final filtered = current.where((item) => item.id != song.id).toList();
-    final updated = [song, ...filtered].take(12).toList();
-    await _recentBox.put('songs', updated.map((item) => item.toMap()).toList());
+    final withoutCurrent = current.where((item) => item.id != song.id).toList();
+    final updated = [song, ...withoutCurrent].take(12).toList();
+    await _recentBox.put('songs', updated.map((song) => song.toMap()).toList());
   }
 
   static Future<void> createPlaylist(String name) async {
+    final current = playlists;
     final playlist = PlaylistModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       songs: const [],
     );
-    final current = playlists;
-    await _playlistsBox.put('playlists', [...current, playlist].map((p) => p.toMap()).toList());
+
+    await _playlistsBox.put('playlists', [...current, playlist].map((playlist) => playlist.toMap()).toList());
   }
 
   static Future<void> addSongToPlaylist(String playlistId, SongModel song) async {
     final current = playlists;
     final updated = current.map((playlist) {
-      if (playlist.id == playlistId) {
-        if (playlist.songs.any((item) => item.id == song.id)) {
-          return playlist;
-        }
-        return PlaylistModel(
-          id: playlist.id,
-          name: playlist.name,
-          songs: [...playlist.songs, song],
-        );
+      if (playlist.id != playlistId) {
+        return playlist;
       }
-      return playlist;
+      if (playlist.songs.any((item) => item.id == song.id)) {
+        return playlist;
+      }
+      return PlaylistModel(
+        id: playlist.id,
+        name: playlist.name,
+        songs: [...playlist.songs, song],
+      );
     }).toList();
-    await _playlistsBox.put('playlists', updated.map((p) => p.toMap()).toList());
+
+    await _playlistsBox.put('playlists', updated.map((playlist) => playlist.toMap()).toList());
+  }
+
+  static Future<void> removeSongFromPlaylist(String playlistId, String songId) async {
+    final current = playlists;
+    final updated = current.map((playlist) {
+      if (playlist.id != playlistId) {
+        return playlist;
+      }
+      return PlaylistModel(
+        id: playlist.id,
+        name: playlist.name,
+        songs: playlist.songs.where((song) => song.id != songId).toList(),
+      );
+    }).toList();
+
+    await _playlistsBox.put('playlists', updated.map((playlist) => playlist.toMap()).toList());
   }
 
   static Future<void> deletePlaylist(String playlistId) async {
     final current = playlists.where((playlist) => playlist.id != playlistId).toList();
-    await _playlistsBox.put('playlists', current.map((p) => p.toMap()).toList());
+    await _playlistsBox.put('playlists', current.map((playlist) => playlist.toMap()).toList());
   }
 }

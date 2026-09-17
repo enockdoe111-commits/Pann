@@ -34,11 +34,15 @@ class SongsScreen extends StatelessWidget {
                 ),
               ),
               onChanged: (value) {
-                appState.searchQuery = value;
-                appState.notifyListeners();
+                appState.setSearchQuery(value);
               },
             ),
           ),
+          if (appState.scanMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(appState.scanMessage),
+            ),
           Expanded(
             child: appState.allSongs.isEmpty
                 ? const Center(
@@ -61,8 +65,8 @@ class SongsScreen extends StatelessWidget {
     final isFavorite = appState.isFavorite(song.id);
     return ListTile(
       leading: Container(
-        width: 50,
-        height: 50,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: const LinearGradient(
@@ -77,10 +81,25 @@ class SongsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(song.durationText),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           IconButton(
-            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.pink : null),
             onPressed: () => appState.toggleFavorite(song),
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.pink : null,
+            ),
+          ),
+          PopupMenuButton<String>(
+            itemBuilder: (_) => appState.playlists
+                .map((playlist) => PopupMenuItem(
+                      value: playlist.id,
+                      child: Text(playlist.name),
+                    ))
+                .toList(),
+            onSelected: (playlistId) {
+              appState.addSongToPlaylist(playlistId, song);
+            },
+            child: const Icon(Icons.playlist_add),
           ),
         ],
       ),

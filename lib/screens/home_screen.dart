@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:modern_music_player/main.dart';
+import 'package:modern_music_player/models/playlist_model.dart';
 import 'package:modern_music_player/models/song_model.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -11,7 +12,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final recent = appState.recentSongs;
     final favorites = appState.favoriteSongs;
-    final songs = appState.filteredSongs.isEmpty ? appState.allSongs : appState.filteredSongs;
+    final songs = appState.filteredSongs;
 
     return Scaffold(
       appBar: AppBar(
@@ -22,15 +23,17 @@ class HomeScreen extends StatelessWidget {
               final controller = TextEditingController(text: appState.searchQuery);
               showDialog(
                 context: context,
-                builder: (_) {
+                builder: (context) {
                   return AlertDialog(
-                    title: const Text('Search music'),
+                    title: const Text('Search local library'),
                     content: TextField(
                       controller: controller,
-                      decoration: const InputDecoration(hintText: 'Song, artist, album'),
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Song, artist, or album',
+                      ),
                       onChanged: (value) {
-                        appState.searchQuery = value;
-                        appState.notifyListeners();
+                        appState.setSearchQuery(value);
                       },
                     ),
                     actions: [
@@ -48,45 +51,54 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => appState.scanDeviceMusic(),
+        onRefresh: appState.scanDeviceMusic,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (appState.scanMessage.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                ),
+                child: Text(appState.scanMessage),
+              ),
             _sectionTitle('Recently played'),
             if (recent.isEmpty)
-              const Text('No recent songs yet.')
+              const Text('No recently played songs yet.')
             else
               SizedBox(
-                height: 160,
+                height: 180,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: recent.length,
                   itemBuilder: (_, index) {
-                    final song = recent[index];
-                    return _songCard(context, song, appState);
+                    return _songCard(context, recent[index], appState);
                   },
                 ),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             _sectionTitle('Favorites'),
             if (favorites.isEmpty)
-              const Text('Tap the heart to save favorites.')
+              const Text('Tap the heart on a song to save it.')
             else
               SizedBox(
-                height: 160,
+                height: 180,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: favorites.length,
                   itemBuilder: (_, index) {
-                    final song = favorites[index];
-                    return _songCard(context, song, appState);
+                    return _songCard(context, favorites[index], appState);
                   },
                 ),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             _sectionTitle('All songs'),
             if (songs.isEmpty)
-              const Text('No music found on this device. Try rescan in Settings.')
+              const Text('No music found on this device.')
             else
               ...songs.take(8).map((song) => _songTile(context, song, appState)).toList(),
           ],
@@ -100,7 +112,7 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -112,7 +124,7 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: () => appState.playSong(song),
         child: SizedBox(
-          width: 140,
+          width: 150,
           child: Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             child: Padding(
@@ -121,7 +133,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    height: 84,
+                    height: 88,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
@@ -129,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                         colors: [Color(0xFF7C4DFF), Color(0xFF00C2A8)],
                       ),
                     ),
-                    child: const Icon(Icons.music_note, size: 40, color: Colors.white),
+                    child: const Icon(Icons.music_note, size: 38, color: Colors.white),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -154,10 +166,12 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _songTile(BuildContext context, SongModel song, AppState appState) {
+    final isFavorite = appState.isFavorite(song.id);
+
     return ListTile(
       leading: Container(
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: const LinearGradient(
@@ -166,14 +180,33 @@ class HomeScreen extends StatelessWidget {
         ),
         child: const Icon(Icons.music_note, color: Colors.white),
       ),
-      title: Text(song.title),
+      title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text('${song.artist} • ${song.durationText}'),
-      trailing: IconButton(
-        icon: Icon(
-          appState.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
-          color: appState.isFavorite(song.id) ? Colors.pink : null,
-        ),
-        onPressed: () => appState.toggleFavorite(song),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: () => appState.toggleFavorite(song),
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.pink : null,
+            ),
+          ),
+          PopupMenuButton<String>(
+            itemBuilder: (context) => appState.playlists
+                .map(
+                  (playlist) => PopupMenuItem(
+                    value: playlist.id,
+                    child: Text(playlist.name),
+                  ),
+                )
+                .toList(),
+            onSelected: (playlistId) {
+              appState.addSongToPlaylist(playlistId, song);
+            },
+            child: const Icon(Icons.add_circle_outline),
+          ),
+        ],
       ),
       onTap: () => appState.playSong(song),
     );

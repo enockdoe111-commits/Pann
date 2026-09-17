@@ -9,15 +9,13 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           SwitchListTile(
             title: const Text('Dark mode'),
-            subtitle: const Text('Use dark theme by default.'),
+            subtitle: const Text('Toggle the app theme.'),
             value: appState.isDarkMode,
             onChanged: (value) async {
               await appState.setTheme(value);
@@ -26,7 +24,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.refresh),
             title: const Text('Rescan music'),
-            subtitle: const Text('Refresh the local music library.'),
+            subtitle: const Text('Scan your phone again for local songs.'),
             onTap: () async {
               await appState.scanDeviceMusic();
             },
@@ -34,7 +32,7 @@ class SettingsScreen extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('About'),
-            subtitle: Text('Modern Music Player\nOffline local music player for Android.'),
+            subtitle: Text('Modern Music Player\nOffline music player for local Android files.'),
           ),
         ],
       ),
